@@ -1,0 +1,7 @@
+# 文件上传目录
+# 目录结构:
+# uploads/
+# ├── batches/           # 批次文件目录
+# │   └── {batch_id}/   # 按批次ID分类
+# │       └── documents/ # 文档文件
+# └── temp/             # 临时文件
