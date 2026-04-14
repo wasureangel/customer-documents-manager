@@ -93,22 +93,6 @@ crm/
 - DELETE /api/documents/:id - 删除文件
 - PUT /api/documents/:id/status - 更新文件状态
 
-## 启动说明
-
-### 后端启动
-```bash
-cd backend
-npm install
-npm start
-```
-
-### 前端启动
-```bash
-cd frontend
-npm install
-npm start
-```
-
 ## 文件存储目录结构
 ```
 backend/uploads/
