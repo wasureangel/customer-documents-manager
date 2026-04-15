@@ -1,16 +1,19 @@
+import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Layout, Menu } from 'antd';
+import { Layout, Menu, Button } from 'antd';
 import {
   DashboardOutlined,
   CustomerServiceOutlined,
   FileTextOutlined,
   FolderOutlined,
   ShoppingCartOutlined,
-  AppstoreOutlined
+  AppstoreOutlined,
+  LogoutOutlined
 } from '@ant-design/icons';
 import './index.css';
 
 // 导入页面组件
+import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import CustomerList from './pages/CustomerList';
 import BatchList from './pages/BatchList';
@@ -88,21 +91,71 @@ function SideNav() {
 }
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // 检查 localStorage 中的 token
+    const token = localStorage.getItem('auth_token');
+    setIsAuthenticated(!!token);
+    setIsLoading(false);
+
+    // 监听 storage 变化（多标签页同步登录状态）
+    const handleStorageChange = (e) => {
+      if (e.key === 'auth_token') {
+        setIsAuthenticated(!!e.newValue);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  const handleLogin = (token) => {
+    localStorage.setItem('auth_token', token);
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    setIsAuthenticated(false);
+  };
+
+  // 加载中显示空白
+  if (isLoading) {
+    return null;
+  }
+
+  // 未认证显示登录页
+  if (!isAuthenticated) {
+    return <Login onLogin={handleLogin} />;
+  }
+
+  // 已认证显示主应用
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <SideNav />
-      
+
       <Layout>
-        <Header style={{ 
-          background: '#fff', 
+        <Header style={{
+          background: '#fff',
           padding: '0 24px',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
           boxShadow: '0 1px 4px rgba(0,21,41,.08)'
         }}>
           <h2 style={{ margin: 0, fontSize: 20 }}>外贸出口文件管理系统</h2>
+          <Button
+            type="text"
+            icon={<LogoutOutlined />}
+            onClick={handleLogout}
+            danger
+          >
+            退出登录
+          </Button>
         </Header>
-        
+
         <Content style={{ margin: '24px', minHeight: 280 }}>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

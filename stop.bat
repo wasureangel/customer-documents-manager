@@ -1,20 +1,25 @@
 @echo off
-chcp 65001 >/dev/null
-title CRM 项目停止
+title CRM - Stopping...
 
+cls
 echo ========================================
-echo   停止 CRM 项目
+echo   Stopping CRM Project...
 echo ========================================
 echo.
 
-echo 正在停止所有 Node.js 进程...
-taskkill /F /IM node.exe 2>/dev/null
+echo Killing Node.js processes...
+taskkill /F /IM node.exe 2>nul
 
 if %errorlevel% == 0 (
-    echo 成功停止所有服务
+    echo.
+    echo ========================================
+    echo   All services stopped successfully
+    echo ========================================
 ) else (
-    echo 没有运行中的服务
+    echo.
+    echo   No running services found
+    echo ========================================
 )
 
 echo.
-timeout /t 2 /nobreak >/dev/null
+timeout /t 2 /nobreak >nul

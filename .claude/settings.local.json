@@ -47,7 +47,8 @@
       "Bash(node src/migrations/add_document_type_category.js)",
       "Bash(cmd //c taskkill //F //PID 36532)",
       "Bash(node src/migrations/add_bill_of_lading.js)",
-      "Bash(cmd //c taskkill //F //PID 8672)"
+      "Bash(cmd //c taskkill //F //PID 8672)",
+      "Bash(node -e \"console.log\\('Testing middleware order...'\\); const express = require\\('express'\\); const path = require\\('path'\\); const app = express\\(\\); const frontendPath = path.join\\(__dirname, 'src', '../../frontend/dist'\\); console.log\\('Frontend path:', frontendPath\\); console.log\\('File exists:', require\\('fs'\\).existsSync\\(path.join\\(frontendPath, 'index.html'\\)\\)\\);\")"
     ]
   }
 }
