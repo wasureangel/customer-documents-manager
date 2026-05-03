@@ -12,9 +12,9 @@ export function useAuth() {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  // 初始化时检查 localStorage 中的 token
+  // 初始化时检查 sessionStorage 中的 token
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = sessionStorage.getItem(TOKEN_KEY);
     setIsAuthenticated(!!token);
     setIsLoading(false);
   }, []);
@@ -37,7 +37,7 @@ export function useAuth() {
       const data = await response.json();
 
       if (data.success) {
-        localStorage.setItem(TOKEN_KEY, data.token);
+        sessionStorage.setItem(TOKEN_KEY, data.token);
         setIsAuthenticated(true);
         return true;
       }
@@ -53,7 +53,7 @@ export function useAuth() {
    * 退出登录
    */
   const logout = () => {
-    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
     setIsAuthenticated(false);
     navigate('/login');
   };
@@ -62,7 +62,7 @@ export function useAuth() {
    * 获取 token
    */
   const getToken = () => {
-    return localStorage.getItem(TOKEN_KEY);
+    return sessionStorage.getItem(TOKEN_KEY);
   };
 
   return {

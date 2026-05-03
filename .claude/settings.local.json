@@ -48,7 +48,26 @@
       "Bash(cmd //c taskkill //F //PID 36532)",
       "Bash(node src/migrations/add_bill_of_lading.js)",
       "Bash(cmd //c taskkill //F //PID 8672)",
-      "Bash(node -e \"console.log\\('Testing middleware order...'\\); const express = require\\('express'\\); const path = require\\('path'\\); const app = express\\(\\); const frontendPath = path.join\\(__dirname, 'src', '../../frontend/dist'\\); console.log\\('Frontend path:', frontendPath\\); console.log\\('File exists:', require\\('fs'\\).existsSync\\(path.join\\(frontendPath, 'index.html'\\)\\)\\);\")"
+      "Bash(node -e \"console.log\\('Testing middleware order...'\\); const express = require\\('express'\\); const path = require\\('path'\\); const app = express\\(\\); const frontendPath = path.join\\(__dirname, 'src', '../../frontend/dist'\\); console.log\\('Frontend path:', frontendPath\\); console.log\\('File exists:', require\\('fs'\\).existsSync\\(path.join\\(frontendPath, 'index.html'\\)\\)\\);\")",
+      "Bash(node -e ' *)",
+      "Bash(python3 -c \" import json with open\\(r'C:/Users/JH/.claude/projects/f--project-customer-documents-manager/882e644c-da1e-4fdc-9b74-0c19a6d6e665.jsonl', 'r', encoding='utf-8'\\) as f: lines = f.readlines\\(\\) for i, line in enumerate\\(lines\\): if 'packing_list_template' in line and \\('width' in line or 'exceljs' in line\\): data = json.loads\\(line\\) msg = data.get\\('message', {}\\) content = msg.get\\('content', ''\\) if isinstance\\(content, list\\): for item in content: if isinstance\\(item, dict\\): text = item.get\\('text', ''\\) if 'getColumn' in text or \\('width' in text and 'column' in text.lower\\(\\)\\): for seg in text.split\\('\\\\n'\\): if 'getColumn' in seg and 'width' in seg: print\\(f'Line {i}: {seg.strip\\(\\)}'\\) elif isinstance\\(content, str\\): if 'getColumn' in content: for seg in content.split\\('\\\\n'\\): if 'getColumn' in seg and 'width' in seg: print\\(f'Line {i}: {seg.strip\\(\\)}'\\) \")",
+      "Bash(node -c src/controllers/packingListController.js)",
+      "Bash(node check_template.js)",
+      "Bash(node diagnose_borders.js)",
+      "Bash(node diagnose_borders2.js)",
+      "Bash(node diagnose_step.js)",
+      "Bash(node diagnose_step5.js)",
+      "Bash(node diagnose_deepcopy.js)",
+      "Bash(node diagnose_beyond.js)",
+      "Bash(node diagnose_isolate.js)",
+      "Bash(node diagnose_root.js)",
+      "Bash(node diagnose_fix.js)",
+      "Bash(node diagnose_extend.js)",
+      "Bash(node diagnose_22_24.js)",
+      "Bash(node diagnose_full.js)",
+      "Bash(node diagnose_b17.js)",
+      "Bash(node diagnose_save.js)",
+      "Bash(node -c src/server.js)"
     ]
   }
 }

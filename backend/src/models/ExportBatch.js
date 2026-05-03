@@ -48,7 +48,6 @@ class ExportBatch {
   static getById(id) {
     const Document = require('./Document');
     const CustomerDocType = require('./CustomerDocType');
-    const BatchProduct = require('./BatchProduct');
 
     const getBatch = () => new Promise((resolve, reject) => {
       const sql = `
@@ -70,8 +69,6 @@ class ExportBatch {
 
       const documents = await Document.getByBatchId(id);
       const requiredDocTypes = await CustomerDocType.getRequiredDetailsByCustomerId(batch.customer_id);
-      const products = await BatchProduct.getByBatchId(id);
-      const totalAmount = await BatchProduct.getTotalAmount(id);
 
       const uploadedRequiredTypes = new Set(
         documents
@@ -87,8 +84,6 @@ class ExportBatch {
         ...batch,
         documents,
         requiredDocTypes,
-        products,
-        totalAmount,
         completionRate
       };
     });
@@ -129,13 +124,25 @@ class ExportBatch {
 
     return generateNumber.then(finalBatchNumber => {
       return new Promise((resolve, reject) => {
-        const sql = `
-          INSERT INTO export_batches (customer_id, batch_number, bill_of_lading, created_at, updated_at)
-          VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        `;
-        db.run(sql, [customerId, finalBatchNumber, billOfLading], function(err) {
-          if (err) reject(err);
-          else resolve(this.lastID);
+        // Check for duplicate batch_number
+        db.get('SELECT id FROM export_batches WHERE batch_number = ?', [finalBatchNumber], (err, row) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          if (row) {
+            reject(new Error('出口发票号已存在'));
+            return;
+          }
+
+          const sql = `
+            INSERT INTO export_batches (customer_id, batch_number, bill_of_lading, created_at, updated_at)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          `;
+          db.run(sql, [customerId, finalBatchNumber, billOfLading], function(err) {
+            if (err) reject(err);
+            else resolve(this.lastID);
+          });
         });
       });
     }).then(lastID => ExportBatch.getById(lastID));
@@ -143,14 +150,26 @@ class ExportBatch {
 
   static update(id, batchNumber, billOfLading = null) {
     return new Promise((resolve, reject) => {
-      const sql = `
-        UPDATE export_batches
-        SET batch_number = ?, bill_of_lading = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `;
-      db.run(sql, [batchNumber, billOfLading, id], (err) => {
-        if (err) reject(err);
-        else ExportBatch.getById(id).then(resolve);
+      // Check for duplicate batch_number (excluding current record)
+      db.get('SELECT id FROM export_batches WHERE batch_number = ? AND id != ?', [batchNumber, id], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        if (row) {
+          reject(new Error('出口发票号已存在'));
+          return;
+        }
+
+        const sql = `
+          UPDATE export_batches
+          SET batch_number = ?, bill_of_lading = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `;
+        db.run(sql, [batchNumber, billOfLading, id], (err) => {
+          if (err) reject(err);
+          else ExportBatch.getById(id).then(resolve);
+        });
       });
     });
   }

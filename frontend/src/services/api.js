@@ -12,7 +12,7 @@ const api = axios.create({
 // 请求拦截器 - 添加认证 token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token');
+    const token = sessionStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -31,7 +31,7 @@ api.interceptors.response.use(
   (error) => {
     // 处理 401 未授权错误
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('auth_token');
+      sessionStorage.removeItem('auth_token');
       // 只在非登录页面时跳转
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
@@ -58,7 +58,7 @@ api.interceptors.response.use(
  * @param {string} filename - 下载的文件名（可选）
  */
 async function downloadFile(url, filename) {
-  const token = localStorage.getItem('auth_token');
+  const token = sessionStorage.getItem('auth_token');
   try {
     const response = await fetch(url, {
       headers: {
@@ -70,13 +70,19 @@ async function downloadFile(url, filename) {
       throw new Error('下载失败');
     }
 
-    // 获取文件名（从响应头或使用默认值）
+    // 获取文件名（从响应头或使用默认值，优先使用 filename* 编码）
     let downloadFilename = filename;
-    const contentDisposition = response.headers.get('Content-Disposition');
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-      if (filenameMatch && filenameMatch[1]) {
-        downloadFilename = filenameMatch[1].replace(/['"]/g, '');
+    const disposition = response.headers.get('Content-Disposition');
+    if (disposition) {
+      // 优先匹配 filename*=UTF-8''...（支持中文）
+      const utf8Match = disposition.match(/filename\*=UTF-8''([^;\n]+)/i);
+      if (utf8Match && utf8Match[1]) {
+        downloadFilename = decodeURIComponent(utf8Match[1]);
+      } else {
+        const filenameMatch = disposition.match(/filename[^*;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          downloadFilename = filenameMatch[1].replace(/['"]/g, '');
+        }
       }
     }
 
@@ -102,7 +108,7 @@ async function downloadFile(url, filename) {
  * @returns {string} - Blob URL
  */
 async function previewFile(url) {
-  const token = localStorage.getItem('auth_token');
+  const token = sessionStorage.getItem('auth_token');
   try {
     const response = await fetch(url, {
       headers: {
@@ -201,7 +207,7 @@ export const documentAPI = {
 
   // 上传文件
   upload: (batchId, formData) => {
-    const token = localStorage.getItem('auth_token');
+    const token = sessionStorage.getItem('auth_token');
     return axios.post(`/api/batches/${batchId}/documents`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -230,72 +236,6 @@ export const documentAPI = {
 
   // 删除文件
   delete: (id) => api.delete(`/documents/${id}`)
-};
-
-// 产品API
-export const productAPI = {
-  // 获取批次的产品列表
-  getByBatchId: (batchId) => api.get(`/batches/${batchId}/products`),
-
-  // 添加产品
-  create: (batchId, data) => api.post(`/batches/${batchId}/products`, data),
-
-  // 更新产品
-  update: (batchId, productId, data) => api.put(`/batches/${batchId}/products/${productId}`, data),
-
-  // 删除产品
-  delete: (batchId, productId) => api.delete(`/batches/${batchId}/products/${productId}`)
-};
-
-// 订单API
-export const orderAPI = {
-  // 获取所有订单
-  getAll: (params = {}) => api.get('/orders', { params }),
-
-  // 根据客户ID获取订单
-  getByCustomerId: (customerId) => api.get(`/orders/customer/${customerId}`),
-
-  // 根据ID获取订单
-  getById: (id) => api.get(`/orders/${id}`),
-
-  // 创建订单
-  create: (data) => api.post('/orders', data),
-
-  // 更新订单
-  update: (id, data) => api.put(`/orders/${id}`, data),
-
-  // 删除订单
-  delete: (id) => api.delete(`/orders/${id}`),
-
-  // 获取订单的产品列表
-  getProducts: (orderId) => api.get(`/orders/${orderId}/products`),
-
-  // 添加产品
-  addProduct: (orderId, data) => api.post(`/orders/${orderId}/products`, data),
-
-  // 更新产品
-  updateProduct: (orderId, productId, data) => api.put(`/orders/${orderId}/products/${productId}`, data),
-
-  // 删除产品
-  deleteProduct: (orderId, productId) => api.delete(`/orders/${orderId}/products/${productId}`)
-};
-
-// 产品目录API
-export const productCatalogAPI = {
-  // 获取所有产品
-  getAll: () => api.get('/products'),
-
-  // 根据ID获取产品
-  getById: (id) => api.get(`/products/${id}`),
-
-  // 创建产品
-  create: (data) => api.post('/products', data),
-
-  // 更新产品
-  update: (id, data) => api.put(`/products/${id}`, data),
-
-  // 删除产品
-  delete: (id) => api.delete(`/products/${id}`)
 };
 
 export default api;

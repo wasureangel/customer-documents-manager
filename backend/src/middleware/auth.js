@@ -9,6 +9,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'crm-secret-key-change-in-productio
  * 验证请求中的 Bearer token
  */
 function authMiddleware(req, res, next) {
+  // 静态资源和SPA页面路由不需要认证（仅对 /api/ 和 /uploads/ 校验）
+  const isApiOrUpload = req.path.startsWith('/api/') || req.path.startsWith('/uploads/');
+
+  if (!isApiOrUpload) {
+    return next();
+  }
+
   // 白名单：登录接口和健康检查接口不需要认证
   const whiteList = [
     '/api/auth/login',
@@ -16,17 +23,7 @@ function authMiddleware(req, res, next) {
     '/health'
   ];
 
-  // 检查是否在白名单中
-  const isWhiteListed = whiteList.some(path => req.path === path && req.method !== 'OPTIONS');
-
-  // 静态资源不需要认证（assets, vite.svg 等）
-  const isStaticAsset = req.path.startsWith('/assets/') ||
-    req.path.startsWith('/vite.svg') ||
-    req.path === '/favicon.ico' ||
-    req.path === '/' ||
-    req.path.startsWith('/?');
-
-  if (isWhiteListed || isStaticAsset) {
+  if (whiteList.some(path => req.path === path && req.method !== 'OPTIONS')) {
     return next();
   }
 

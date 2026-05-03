@@ -13,8 +13,6 @@ const batchRoutes = require('./routes/batchRoutes');
 const documentTypeRoutes = require('./routes/documentTypeRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 const customerDocTypeRoutes = require('./routes/customerDocTypeRoutes');
-const orderRoutes = require('./routes/orderRoutes');
-const productRoutes = require('./routes/productRoutes');
 const authRoutes = require('./routes/authRoutes');
 
 // 创建Express应用
@@ -72,8 +70,6 @@ app.use('/api/batches', batchRoutes);
 app.use('/api/document-types', documentTypeRoutes);
 app.use('/api', documentRoutes);
 app.use('/api', customerDocTypeRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/products', productRoutes);
 
 // SPA fallback - 对于非 API 路由，返回 index.html
 if (frontendExists) {
@@ -113,23 +109,47 @@ app.use((err, req, res, next) => {
 });
 
 // 启动服务器
-app.listen(PORT, '0.0.0.0', () => {
-  console.log('========================================');
-  console.log('  外贸出口文件管理系统后端服务');
-  console.log('========================================');
-  console.log(`  服务器运行在端口: ${PORT}`);
-  console.log(`  环境: ${isDev ? 'development' : 'production'}`);
-  console.log(`  访问地址: http://localhost:${PORT}`);
-  console.log(`  时间: ${new Date().toLocaleString('zh-CN')}`);
-  console.log('========================================');
-  console.log('');
-  console.log('API端点:');
-  console.log(`  - GET  http://localhost:${PORT}/health`);
-  console.log(`  - POST http://localhost:${PORT}/api/auth/login`);
-  console.log(`  - GET  http://localhost:${PORT}/api/customers`);
-  console.log(`  - GET  http://localhost:${PORT}/api/batches`);
-  console.log(`  - GET  http://localhost:${PORT}/api/document-types`);
-  console.log('');
+async function startServer() {
+  const migrateAddBillOfLading = require('./migrations/add_bill_of_lading');
+  const migrateAddDocumentTypeCategory = require('./migrations/add_document_type_category');
+  const migrateAddUniqueCustomersName = require('./migrations/add_unique_customers_name');
+  const migrateAddUniqueBatchNumber = require('./migrations/add_unique_export_batches_batch_number');
+
+  console.log('开始执行数据库迁移...');
+  try {
+    await migrateAddBillOfLading();
+    await migrateAddDocumentTypeCategory();
+    await migrateAddUniqueCustomersName();
+    await migrateAddUniqueBatchNumber();
+    console.log('数据库迁移完成');
+  } catch (err) {
+    console.error('迁移失败:', err.message);
+    throw err;
+  }
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log('========================================');
+    console.log('  外贸出口文件管理系统后端服务');
+    console.log('========================================');
+    console.log(`  服务器运行在端口: ${PORT}`);
+    console.log(`  环境: ${isDev ? 'development' : 'production'}`);
+    console.log(`  访问地址: http://localhost:${PORT}`);
+    console.log(`  时间: ${new Date().toLocaleString('zh-CN')}`);
+    console.log('========================================');
+    console.log('');
+    console.log('API端点:');
+    console.log(`  - GET  http://localhost:${PORT}/health`);
+    console.log(`  - POST http://localhost:${PORT}/api/auth/login`);
+    console.log(`  - GET  http://localhost:${PORT}/api/customers`);
+    console.log(`  - GET  http://localhost:${PORT}/api/batches`);
+    console.log(`  - GET  http://localhost:${PORT}/api/document-types`);
+    console.log('');
+  });
+}
+
+startServer().catch(err => {
+  console.error('服务器启动失败:', err);
+  process.exit(1);
 });
 
 module.exports = app;

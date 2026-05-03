@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -14,9 +14,7 @@ import {
   Space,
   Alert,
   Image,
-  Tag,
-  Form,
-  InputNumber
+  Tag
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -24,11 +22,9 @@ import {
   DownloadOutlined,
   DeleteOutlined,
   FileTextOutlined,
-  EyeOutlined,
-  PlusOutlined,
-  EditOutlined
+  EyeOutlined
 } from '@ant-design/icons';
-import { batchAPI, documentAPI, documentTypeAPI, customerDocTypeAPI, productAPI, productCatalogAPI, orderAPI } from '../services/api';
+import { batchAPI, documentAPI, documentTypeAPI, customerDocTypeAPI } from '../services/api';
 import { renderAsync } from 'docx-preview';
 import * as XLSX from 'xlsx';
 
@@ -41,7 +37,6 @@ function BatchDetail() {
   const [documents, setDocuments] = useState([]);
   const [customerDocTypes, setCustomerDocTypes] = useState([]);
   const [requiredDocTypes, setRequiredDocTypes] = useState([]);
-  const [productCatalog, setProductCatalog] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
@@ -54,13 +49,19 @@ function BatchDetail() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [excelData, setExcelData] = useState(null);
   const wordContainerRef = useRef(null);
-  const [productModalVisible, setProductModalVisible] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
-  const [productForm] = Form.useForm();
-  const [importOrderModalVisible, setImportOrderModalVisible] = useState(false);
-  const [customerOrders, setCustomerOrders] = useState([]);
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [importing, setImporting] = useState(false);
+  const wordBlobRef = useRef(null);
+
+  // Word 文档渲染：当 blob 和容器都就绪时调用 renderAsync
+  useLayoutEffect(() => {
+    if (previewFile?.type === 'word' && wordBlobRef.current && wordContainerRef.current) {
+      renderAsync(wordBlobRef.current, wordContainerRef.current, null, {
+        className: 'docx-preview',
+        inWrapper: true
+      }).catch(() => {
+        message.error('预览 Word 文档失败');
+      });
+    }
+  }, [previewFile?.type]);
 
   useEffect(() => {
     loadBatchData();
@@ -98,10 +99,6 @@ function BatchDetail() {
 
         setCustomerDocTypes(customerDocTypes);
       }
-
-      // 加载产品目录
-      const productsRes = await productCatalogAPI.getAll();
-      setProductCatalog(productsRes.data || []);
     } catch (error) {
       message.error('加载数据失败');
     } finally {
@@ -150,110 +147,6 @@ function BatchDetail() {
     }
   };
 
-  // 产品管理函数
-  const handleAddProduct = () => {
-    setEditingProduct(null);
-    productForm.resetFields();
-    setProductModalVisible(true);
-  };
-
-  const handleEditProduct = (record) => {
-    setEditingProduct(record);
-    // 如果有 product_id，直接使用；否则尝试从产品目录匹配
-    const productId = record.product_id || (record.product_name && productCatalog.find(pc => pc.name === record.product_name && pc.model === record.model)?.id);
-
-    productForm.setFieldsValue({
-      product_id: productId || null,
-      quantity: record.quantity,
-      unit_price: record.unit_price
-    });
-    setProductModalVisible(true);
-  };
-
-  const handleDeleteProduct = async (productId) => {
-    try {
-      await productAPI.delete(id, productId);
-      message.success('删除成功');
-      loadBatchData();
-    } catch (error) {
-      message.error('删除失败');
-    }
-  };
-
-  const handleProductSubmit = async () => {
-    try {
-      const values = await productForm.validateFields();
-
-      if (editingProduct) {
-        // 编辑时只更新数量和单价
-        await productAPI.update(id, editingProduct.id, {
-          quantity: values.quantity,
-          unit_price: values.unit_price
-        });
-        message.success('更新成功');
-      } else {
-        // 新增时需要 product_id
-        await productAPI.create(id, {
-          product_id: values.product_id,
-          quantity: values.quantity,
-          unit_price: values.unit_price
-        });
-        message.success('添加成功');
-      }
-      setProductModalVisible(false);
-      loadBatchData();
-    } catch (error) {
-      message.error(error.message || '操作失败');
-    }
-  };
-
-  const handleOpenImportOrderModal = async () => {
-    try {
-      setImportOrderModalVisible(true);
-      const response = await orderAPI.getByCustomerId(batch.customer_id);
-      setCustomerOrders(response.data || []);
-      setSelectedOrderId(null);
-    } catch (error) {
-      message.error('加载订单列表失败');
-    }
-  };
-
-  const handleImportFromOrder = async () => {
-    if (!selectedOrderId) {
-      message.error('请选择订单');
-      return;
-    }
-
-    try {
-      setImporting(true);
-      const orderResponse = await orderAPI.getById(selectedOrderId);
-      const order = orderResponse.data;
-
-      if (!order.products || order.products.length === 0) {
-        message.warning('该订单没有产品');
-        return;
-      }
-
-      // 批量导入产品
-      for (const product of order.products) {
-        await productAPI.create(id, {
-          product_id: product.product_id,
-          quantity: product.quantity,
-          unit_price: product.unit_price
-        });
-      }
-
-      message.success(`成功导入 ${order.products.length} 个产品`);
-      setImportOrderModalVisible(false);
-      setSelectedOrderId(null);
-      loadBatchData();
-    } catch (error) {
-      message.error(error.message || '导入失败');
-    } finally {
-      setImporting(false);
-    }
-  };
-
   const handleOpenUploadModal = (category) => {
     setUploadCategory(category);
     setSelectedDocType(null);
@@ -263,49 +156,81 @@ function BatchDetail() {
   const handlePreview = async (record) => {
     const fileExt = record.file_name.split('.').pop().toLowerCase();
     const previewUrl = `/api/documents/${record.id}/preview`;
-    const downloadUrl = `/api/documents/${record.id}`;
+    const token = sessionStorage.getItem('auth_token');
 
-    // 图片：使用 Ant Design Image 组件
+    // 图片：fetch 带 token，转 blob URL 显示
     if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExt)) {
+      setPreviewLoading(true);
       setPreviewFile({
-        url: downloadUrl,
         name: record.file_name,
         type: 'image'
       });
       setPreviewModalVisible(true);
+
+      try {
+        const response = await fetch(`/api/documents/${record.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('预览图片失败');
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        setPreviewFile(prev => ({ ...prev, url: blobUrl }));
+      } catch (error) {
+        message.error('预览图片失败');
+        setPreviewModalVisible(false);
+      } finally {
+        setPreviewLoading(false);
+      }
       return;
     }
 
-    // PDF：使用 iframe 在 Modal 中显示
+    // PDF：fetch 带 token，转 blob URL 用 iframe 显示
     if (fileExt === 'pdf') {
+      setPreviewLoading(true);
       setPreviewFile({
-        url: previewUrl,
         name: record.file_name,
         type: 'pdf'
       });
       setPreviewModalVisible(true);
+
+      try {
+        const response = await fetch(previewUrl, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('预览 PDF 失败');
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        setPreviewFile(prev => ({ ...prev, url: blobUrl }));
+      } catch (error) {
+        message.error('预览 PDF 失败');
+        setPreviewModalVisible(false);
+      } finally {
+        setPreviewLoading(false);
+      }
       return;
     }
 
     // Word (.docx)：使用 docx-preview 渲染
     if (['docx'].includes(fileExt)) {
       setPreviewLoading(true);
-      setPreviewFile({
-        name: record.file_name,
-        type: 'word'
-      });
-      setPreviewModalVisible(true);
 
       try {
-        const response = await fetch(previewUrl);
-        const blob = await response.blob();
-        await renderAsync(blob, wordContainerRef.current, {
-          className: 'docx-preview',
-          inWrapper: true
+        const response = await fetch(previewUrl, {
+          headers: { 'Authorization': `Bearer ${token}` }
         });
+        if (!response.ok) throw new Error('预览 Word 文档失败');
+        const blob = await response.blob();
+
+        // 存储 blob 并显示容器，useLayoutEffect 会处理渲染
+        wordBlobRef.current = blob;
+        setPreviewFile({
+          name: record.file_name,
+          type: 'word'
+        });
+        setPreviewLoading(false);
+        setPreviewModalVisible(true);
       } catch (error) {
         message.error('预览 Word 文档失败');
-      } finally {
         setPreviewLoading(false);
       }
       return;
@@ -321,7 +246,10 @@ function BatchDetail() {
       setPreviewModalVisible(true);
 
       try {
-        const response = await fetch(previewUrl);
+        const response = await fetch(previewUrl, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('预览 Excel 文档失败');
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const firstSheetName = workbook.SheetNames[0];
@@ -329,7 +257,7 @@ function BatchDetail() {
         const html = XLSX.utils.sheet_to_html(worksheet);
         setExcelData(html);
       } catch (error) {
-        message.error('预览 Excel 文件失败');
+        message.error('预览 Excel 文档失败');
       } finally {
         setPreviewLoading(false);
       }
@@ -416,62 +344,6 @@ function BatchDetail() {
     }
   ];
 
-  const productColumns = [
-    {
-      title: '产品名称',
-      dataIndex: 'product_name',
-      key: 'product_name'
-    },
-    {
-      title: '型号',
-      dataIndex: 'model',
-      key: 'model'
-    },
-    {
-      title: '数量',
-      dataIndex: 'quantity',
-      key: 'quantity'
-    },
-    {
-      title: '单价',
-      dataIndex: 'unit_price',
-      key: 'unit_price',
-      render: (price) => `USD ${Number(price).toFixed(2)}`
-    },
-    {
-      title: '总价',
-      dataIndex: 'total_price',
-      key: 'total_price',
-      render: (price) => `USD ${Number(price).toFixed(2)}`
-    },
-    {
-      title: '操作',
-      key: 'action',
-      width: 150,
-      render: (_, record) => (
-        <Space>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEditProduct(record)}
-          >
-            编辑
-          </Button>
-          <Popconfirm
-            title="确定要删除此产品吗?"
-            onConfirm={() => handleDeleteProduct(record.id)}
-            okText="确定"
-            cancelText="取消"
-          >
-            <Button type="link" danger icon={<DeleteOutlined />}>
-              删除
-            </Button>
-          </Popconfirm>
-        </Space>
-      )
-    }
-  ];
-
   if (!batch && loading) {
     return <div style={{ textAlign: 'center', padding: '50px' }}>加载中...</div>;
   }
@@ -509,36 +381,6 @@ function BatchDetail() {
             {new Date(batch.updated_at).toLocaleString('zh-CN')}
           </Descriptions.Item>
         </Descriptions>
-      </Card>
-
-      <Card
-        title="产品清单"
-        extra={
-          <Space>
-            <Button icon={<FileTextOutlined />} onClick={handleOpenImportOrderModal}>
-              从订单导入
-            </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAddProduct}>
-              添加产品
-            </Button>
-          </Space>
-        }
-        style={{ marginBottom: 24 }}
-      >
-        <Table
-          dataSource={batch.products || []}
-          columns={productColumns}
-          rowKey="id"
-          pagination={false}
-          size="middle"
-        />
-        <div style={{ textAlign: 'right', marginTop: 16, paddingTop: 12, borderTop: '1px solid #f0f0f0' }}>
-          <span style={{ fontSize: 14, color: '#666' }}>
-            批次总金额：<span style={{ fontSize: 16, fontWeight: 'bold', color: '#1890ff' }}>
-              USD {(batch.totalAmount || 0).toFixed(2)}
-            </span>
-          </span>
-        </div>
       </Card>
 
       <Card title="文件完整度" style={{ marginBottom: 24 }}>
@@ -684,6 +526,10 @@ function BatchDetail() {
         title={`文件预览 - ${previewFile?.name || ''}`}
         open={previewModalVisible}
         onCancel={() => {
+          if (previewFile?.url && previewFile.url.startsWith('blob:')) {
+            URL.revokeObjectURL(previewFile.url);
+          }
+          wordBlobRef.current = null;
           setPreviewModalVisible(false);
           setPreviewFile(null);
           setExcelData(null);
@@ -745,90 +591,6 @@ function BatchDetail() {
               </div>
             )}
           </>
-        )}
-      </Modal>
-
-      <Modal
-        title={editingProduct ? '编辑产品' : '添加产品'}
-        open={productModalVisible}
-        onOk={handleProductSubmit}
-        onCancel={() => setProductModalVisible(false)}
-        okText="确定"
-        cancelText="取消"
-      >
-        <Form form={productForm} layout="vertical">
-          <Form.Item
-            label="产品"
-            name="product_id"
-            rules={[{ required: true, message: '请选择产品' }]}
-          >
-            <Select
-              placeholder="请选择产品"
-              showSearch
-              optionFilterProp="children"
-              disabled={!!editingProduct}
-            >
-              {productCatalog.map(pc => (
-                <Option key={pc.id} value={pc.id}>
-                  {pc.product_code} - {pc.name} - {pc.model}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item
-            label="数量"
-            name="quantity"
-            rules={[{ required: true, message: '请输入数量' }]}
-          >
-            <InputNumber min={0} precision={0} style={{ width: '100%' }} placeholder="请输入数量" />
-          </Form.Item>
-          <Form.Item
-            label="单价 (USD)"
-            name="unit_price"
-            rules={[{ required: true, message: '请输入单价' }]}
-          >
-            <InputNumber min={0} precision={2} style={{ width: '100%' }} placeholder="请输入单价" />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal
-        title="从订单导入产品"
-        open={importOrderModalVisible}
-        onOk={handleImportFromOrder}
-        onCancel={() => {
-          setImportOrderModalVisible(false);
-          setSelectedOrderId(null);
-        }}
-        okText="导入"
-        cancelText="取消"
-        confirmLoading={importing}
-      >
-        <div style={{ marginBottom: 16 }}>
-          <Select
-            style={{ width: '100%' }}
-            placeholder="请选择订单"
-            value={selectedOrderId}
-            onChange={setSelectedOrderId}
-            showSearch
-            optionFilterProp="children"
-          >
-            {customerOrders.map(order => (
-              <Option key={order.id} value={order.id}>
-                {order.order_number} - 总金额: USD {(order.totalAmount || 0).toFixed(2)} - {order.products?.length || 0} 个产品
-              </Option>
-            ))}
-          </Select>
-        </div>
-        {selectedOrderId && (
-          <div>
-            <p style={{ marginBottom: 8, fontWeight: 500 }}>将导入以下产品：</p>
-            {customerOrders.find(o => o.id === selectedOrderId)?.products?.map((product, index) => (
-              <div key={index} style={{ padding: '8px 12px', backgroundColor: index % 2 === 0 ? '#fafafa' : 'white', borderRadius: 4 }}>
-                {product.product_name} - {product.model} - 数量: {product.quantity} - 单价: USD {product.unit_price}
-              </div>
-            ))}
-          </div>
         )}
       </Modal>
     </div>

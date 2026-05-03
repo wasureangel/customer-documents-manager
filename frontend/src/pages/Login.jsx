@@ -25,7 +25,7 @@ function Login({ onLogin }) {
       if (data.success) {
         message.success('登录成功');
         // 存储 token
-        localStorage.setItem('auth_token', data.token);
+        sessionStorage.setItem('auth_token', data.token);
         // 调用父组件的登录回调
         if (onLogin) {
           onLogin(data.token);

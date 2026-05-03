@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const archiver = require('archiver');
 const Batch = require('../models/ExportBatch');
+const contentDisposition = require('content-disposition');
 
 exports.getBatchDocuments = async (req, res) => {
   try {
@@ -161,14 +162,15 @@ exports.batchDownloadByCategory = async (req, res) => {
       }
     }
 
-    // 设置响应头
+    // 设置响应头（用 content-disposition 库生成标准编码）
     const zipFileName = `${invoiceNumber}${category}.zip`;
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(zipFileName)}"`);
+    res.setHeader('Content-Disposition', contentDisposition(zipFileName));
 
-    // 创建ZIP流
+    // 创建ZIP流，指定 UTF-8 文件名编码
     const archive = archiver('zip', {
-      zlib: { level: 9 }
+      zlib: { level: 9 },
+      nameEncoding: 'utf8'
     });
 
     // 处理错误

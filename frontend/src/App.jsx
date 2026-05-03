@@ -3,11 +3,9 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-
 import { Layout, Menu, Button } from 'antd';
 import {
   DashboardOutlined,
-  CustomerServiceOutlined,
+  TeamOutlined,
   FileTextOutlined,
   FolderOutlined,
-  ShoppingCartOutlined,
-  AppstoreOutlined,
   LogoutOutlined
 } from '@ant-design/icons';
 import './index.css';
@@ -19,8 +17,6 @@ import CustomerList from './pages/CustomerList';
 import BatchList from './pages/BatchList';
 import BatchDetail from './pages/BatchDetail';
 import DocumentTypeList from './pages/DocumentTypeList';
-import OrderList from './pages/OrderList';
-import ProductList from './pages/ProductList';
 
 const { Header, Content, Sider } = Layout;
 
@@ -33,22 +29,12 @@ function SideNav() {
     {
       key: '/dashboard',
       icon: <DashboardOutlined />,
-      label: '仪表板',
+      label: '仪表盘',
     },
     {
       key: '/customers',
-      icon: <CustomerServiceOutlined />,
+      icon: <TeamOutlined />,
       label: '客户管理',
-    },
-    {
-      key: '/products',
-      icon: <AppstoreOutlined />,
-      label: '产品管理',
-    },
-    {
-      key: '/orders',
-      icon: <ShoppingCartOutlined />,
-      label: '订单管理',
     },
     {
       key: '/batches',
@@ -95,29 +81,18 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 检查 localStorage 中的 token
-    const token = localStorage.getItem('auth_token');
+    const token = sessionStorage.getItem('auth_token');
     setIsAuthenticated(!!token);
     setIsLoading(false);
-
-    // 监听 storage 变化（多标签页同步登录状态）
-    const handleStorageChange = (e) => {
-      if (e.key === 'auth_token') {
-        setIsAuthenticated(!!e.newValue);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const handleLogin = (token) => {
-    localStorage.setItem('auth_token', token);
+    sessionStorage.setItem('auth_token', token);
     setIsAuthenticated(true);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_token');
     setIsAuthenticated(false);
   };
 
@@ -161,8 +136,6 @@ function App() {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/customers" element={<CustomerList />} />
-            <Route path="/products" element={<ProductList />} />
-            <Route path="/orders" element={<OrderList />} />
             <Route path="/batches" element={<BatchList />} />
             <Route path="/batches/:id" element={<BatchDetail />} />
             <Route path="/document-types" element={<DocumentTypeList />} />

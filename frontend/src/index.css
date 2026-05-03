@@ -28,3 +28,13 @@ code {
 .ant-layout-content {
   background: #f0f2f5;
 }
+
+/* docx-preview 表格网格线 */
+.docx-preview-container table {
+  border-collapse: collapse !important;
+}
+
+.docx-preview-container table td,
+.docx-preview-container table th {
+  border: 1px solid #d9d9d9 !important;
+}

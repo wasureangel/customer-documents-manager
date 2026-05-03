@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const batchController = require('../controllers/batchController');
-const batchProductController = require('../controllers/batchProductController');
 
 /**
  * 出口批次路由
@@ -25,11 +24,5 @@ router.put('/:id', batchController.updateBatch);
 
 // 删除批次
 router.delete('/:id', batchController.deleteBatch);
-
-// 批次产品路由
-router.get('/:batchId/products', batchProductController.getBatchProducts);
-router.post('/:batchId/products', batchProductController.addProduct);
-router.put('/:batchId/products/:productId', batchProductController.updateProduct);
-router.delete('/:batchId/products/:productId', batchProductController.deleteProduct);
 
 module.exports = router;

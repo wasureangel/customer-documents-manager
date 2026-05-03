@@ -41,27 +41,51 @@ class Customer {
 
   static create(name) {
     return new Promise((resolve, reject) => {
-      const sql = `
-        INSERT INTO customers (name, created_at, updated_at)
-        VALUES (?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      `;
-      db.run(sql, [name], function(err) {
-        if (err) reject(err);
-        else Customer.getById(this.lastID).then(resolve);
+      // Check for duplicate name
+      db.get('SELECT id FROM customers WHERE name = ?', [name], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        if (row) {
+          reject(new Error('客户名称已存在'));
+          return;
+        }
+
+        const sql = `
+          INSERT INTO customers (name, created_at, updated_at)
+          VALUES (?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `;
+        db.run(sql, [name], function(err) {
+          if (err) reject(err);
+          else Customer.getById(this.lastID).then(resolve);
+        });
       });
     });
   }
 
   static update(id, name) {
     return new Promise((resolve, reject) => {
-      const sql = `
-        UPDATE customers 
-        SET name = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `;
-      db.run(sql, [name, id], (err) => {
-        if (err) reject(err);
-        else Customer.getById(id).then(resolve);
+      // Check for duplicate name (excluding current record)
+      db.get('SELECT id FROM customers WHERE name = ? AND id != ?', [name, id], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        if (row) {
+          reject(new Error('客户名称已存在'));
+          return;
+        }
+
+        const sql = `
+          UPDATE customers
+          SET name = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `;
+        db.run(sql, [name, id], (err) => {
+          if (err) reject(err);
+          else Customer.getById(id).then(resolve);
+        });
       });
     });
   }
